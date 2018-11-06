@@ -1,0 +1,7 @@
+<launch>
+
+	<node name="emg_node" pkg="comm_tcp" type="emg_server_node" output="screen">
+		<param name="port_number"	value="9999"/>
+	</node>
+
+</launch>
