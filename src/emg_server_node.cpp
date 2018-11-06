@@ -14,8 +14,8 @@
 #include "std_msgs/Int16MultiArray.h"
 #include "emg_protocol.h"
 
-#define READ_BUF_SIZE   990
-#define DATA_SIZE	33
+#define READ_BUF_SIZE   4400
+#define DATA_SIZE	44
 
 using namespace std;
 
@@ -178,6 +178,7 @@ void* tcp_thread_func(void* par)
 		
 				continue;			
 			}
+
 			// 데이터 분류&큐에 입력
 			EmgDataUnmarshal(buffer,n);
 		}
