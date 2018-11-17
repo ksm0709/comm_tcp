@@ -57,21 +57,18 @@ bool EmgDataUnmarshal(const char *data, int size)
 
 	while( true )
 	{
-		if( size - idx > PACKET_SIZE )
+		if( size - idx >= PACKET_SIZE )
 			emg_p = (emgData*)(data + idx);
 		else
 		{
-			ROS_INFO("cnt : %d / time : %d", cnt, emgBuf.timestamp);
 			break;
 		}
 
 		if( emg_p->header == HEADER )
 		{	
-			if( cnt++ == 0 )
-			{
-				idx += PACKET_SIZE;
-				continue;
-			}
+			cnt++;
+
+			ROS_INFO("cnt : %d / time : %d / quesize : %d", cnt, emg_p->timestamp, emgQue.size());
 
 			emgBuf.timestamp = emg_p->timestamp;
 
@@ -80,8 +77,8 @@ bool EmgDataUnmarshal(const char *data, int size)
 				emgBuf.data[i] = emg_p->data[i];
 			}
 
-			pthread_mutex_lock(&emgQue_mutex);
-				if (emgQue.size() > 200)
+			pthread_mutex_lock(&emgQue_mutex); 
+				if (emgQue.size() > 100)
 					emgQue.pop();
 				emgQue.push(emgBuf);
 			pthread_mutex_unlock(&emgQue_mutex);
