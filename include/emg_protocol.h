@@ -1,3 +1,4 @@
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +27,8 @@
 
 #define HEADER		0xC691199927021942
 
+typedef std_msgs::Int16MultiArray DType; 
+
 pthread_t pub_thread, tcp_thread; 
 pthread_mutex_t emgQue_mutex;
 int pub_thread_id, tcp_thread_id;
@@ -34,7 +37,7 @@ typedef struct
 {
 	uint64_t header;
 	uint32_t timestamp;
-	int16_t data[CHANNEL_EMG];
+	uint16_t data[CHANNEL_EMG];
 } emgData;
 
 std::queue<emgData> emgQue;
@@ -54,7 +57,7 @@ bool EmgDataUnmarshal(const char *data, int size)
 
 	while( true )
 	{
-		if( size - idx >= PACKET_SIZE )
+		if( size - idx > PACKET_SIZE )
 			emg_p = (emgData*)(data + idx);
 		else
 		{
@@ -64,17 +67,21 @@ bool EmgDataUnmarshal(const char *data, int size)
 
 		if( emg_p->header == HEADER )
 		{	
-			cnt++;
+			if( cnt++ == 0 )
+			{
+				idx += PACKET_SIZE;
+				continue;
+			}
 
 			emgBuf.timestamp = emg_p->timestamp;
 
 			for(int i = 0; i < CHANNEL_EMG ; i++ )
 			{
-				emgBuf.data[i] = (( emg_p->data[i] << 8 )&0xFF00) |  ((emg_p->data[i] >> 8 )&0x00FF);
+				emgBuf.data[i] = emg_p->data[i];
 			}
 
 			pthread_mutex_lock(&emgQue_mutex);
-				if (emgQue.size() > 1024)
+				if (emgQue.size() > 200)
 					emgQue.pop();
 				emgQue.push(emgBuf);
 			pthread_mutex_unlock(&emgQue_mutex);
@@ -92,13 +99,13 @@ void* pub_thread_func(void* par)
 {
 	ros::NodeHandle* nh= (ros::NodeHandle*)par;
 
-	ros::Publisher server_pub = nh->advertise<std_msgs::Int16MultiArray>("rawEMG", 10);
-	std_msgs::Int16MultiArray pub_msg;
+	ros::Publisher server_pub = nh->advertise<DType>("rawEMG", 10);
+	DType pub_msg;
 
 	FILE *fp = fopen("emgdata.txt","w");
 
 	// sampling rate 설정
-	ros::Rate loop_rate(512); 
+	ros::Rate loop_rate(1024); 
 
 	// publishing 되는 데이터의 규격 설정
 	pub_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
@@ -116,7 +123,12 @@ void* pub_thread_func(void* par)
 			pub_msg.data.clear();
 
 			pthread_mutex_lock(&emgQue_mutex);
-				pub_msg.data.assign(emgQue.front().data, emgQue.front().data + CHANNEL_EMG);
+				//pub_msg.data.assign(emgQue.front().data, emgQue.front().data + CHANNEL_EMG);
+				emgData front = emgQue.front();
+				for(int i = 0; i < CHANNEL_EMG ; i++ )
+				{
+					pub_msg.data.push_back((int16_t)(front.data[i] - 32727));
+				}
 				emgQue.pop();
 			pthread_mutex_unlock(&emgQue_mutex);
 			

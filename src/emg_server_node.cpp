@@ -20,7 +20,6 @@ int main (int argc, char** argv)
 	// publisher 스레드 생성
 	pub_thread_id = pthread_create(&pub_thread,&thread_attrs,pub_thread_func,(void*)&nh);
 	
-
 	// tcp 스레드 생성
 	tcp_thread_id = pthread_create(&tcp_thread,&thread_attrs,tcp_thread_func,(void*)&nh);
 
